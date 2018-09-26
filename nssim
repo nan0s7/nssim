@@ -1,0 +1,115 @@
+#!/bin/bash
+
+prf() { printf %s\\n "$*" ; }
+
+# obviously make this an array later
+gpu="GeForce GTX 1070"
+
+# command-ify these
+time="Sun Aug 12 20:40:20 CEST 2018"
+current_temp="30"
+
+pc_name="$(uname -n)"
+fan_speed="35"
+selected_gpu="0"
+selected_fan="0"
+q_get_temp="=[gpu:0]/GPUCoreTemp" #-t
+shortened="0"
+to_exec=""
+
+v_output="
+nvidia-settings:  version 396.51  (builduser@svenstaro)  $time
+  The NVIDIA X Server Settings tool.
+
+  This program is used to configure the NVIDIA Linux graphics driver.
+  For more detail, please see the nvidia-settings(1) man page.
+"
+q_output="nvidia-settings: option "-q" requires an argument.
+
+ERROR: Invalid commandline, please run \`nvidia-settings --help\` for usage information.
+"
+q_gpus_output="
+1 GPU on $pc_name:0
+
+    [0] $pc_name:0[gpu:$selected_gpu] ($gpu)
+
+      Has the following names:
+        GPU-$selected_gpu
+        GPU-bbf55a41-a4e9-f70d-3251-84b911e14279
+"
+q_fans_output="
+1 Fan on $pc_name:0
+
+    [0] $pc_name:0[fan:$selected_fan] (Fan 0)
+
+      Has the following name:
+        FAN-$selected_fan
+"
+a_control_output="
+  Attribute 'GPUFanControlState' ($pc_name:0[gpu:$selected_gpu]) assigned value 1.
+"
+a_control_err_output="
+    'GPUFanControlState' is a boolean attribute; valid values are: 1 (on/true) and 0 (off/false).
+    'GPUFanControlState' can use the following target types: GPU.
+"
+a_speed_output="
+  Attribute 'GPUTargetFanSpeed' ($pc_name:0[fan:$selected_fan]) assigned value $fan_speed.
+"
+a_speed_err_output="
+
+ERROR: Error assigning value $fan_speed to attribute 'GPUTargetFanSpeed' ($pc_name:0[fan:$selected_fan]) as specified in assignment '[fan:$selected_fan]/GPUTargetFanSpeed=$fan_speed' (Unknown Error).
+
+"
+
+# -a [fan:$selected_fan]/GPUTargetFanSpeed=$fan_speed
+# -a [gpu:$selected_gpu]/GPUFanControlState=1
+
+compare_arg_expected() {
+	arg="$1"
+	comparing="$2"
+	output="0"
+	for i in $(seq 1 ${#arg}); do
+		if [ "${arg:i:1}" != "${comparing:i:1}" ]; then
+			output="1"
+			break
+		fi
+	done
+	prf "$output"
+}
+
+remove_gpu_num() {
+	prf "${1:0:6}${1:7}"
+}
+
+query() {
+	args="$1"
+	if [ "${args:$(( ${#args} - 1 ))}" = ";" ]; then
+		args="${1:0:$(( ${#args} - 1 ))}"
+	fi
+	# check if this actually works
+	if [ "${#args}" -gt "4" ]; then
+		args="$(remove_gpu_num "$args")"
+	fi
+	if [ "$shortened" -eq "0" ]; then
+		case $args in
+			"fans") prf "$q_fans_output";;
+			"gpus") prf "$q_gpus_output";;
+			"=[gpu:]/GPUCoreTemp") prf "non-shortened";;
+			*) prf "invalid argument";;
+		esac
+	else
+		prf "$current_temp"
+	fi
+}
+
+while getopts ":v :q: :a: :t" opt; do
+	case $opt in
+		v) prf "$v_output";;
+		a) to_exec+="";;
+		q) to_exec+="query $OPTARG;";;
+		t) shortened="1";;
+		\?) prf "Invalid or unsupported option: -$OPTARG";;
+	esac
+done
+
+$to_exec
