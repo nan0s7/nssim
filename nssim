@@ -10,6 +10,7 @@ time="Sun Aug 12 20:40:20 CEST 2018"
 current_temp="30"
 
 pc_name="$(uname -n)"
+cmd_name="nvidia-settings"
 fan_speed="35"
 selected_gpu="0"
 selected_fan="0"
@@ -61,9 +62,6 @@ ERROR: Error assigning value $fan_speed to attribute 'GPUTargetFanSpeed' ($pc_na
 
 "
 
-# -a [fan:$selected_fan]/GPUTargetFanSpeed=$fan_speed
-# -a [gpu:$selected_gpu]/GPUFanControlState=1
-
 compare_arg_expected() {
 	arg="$1"
 	comparing="$2"
@@ -78,17 +76,27 @@ compare_arg_expected() {
 }
 
 remove_gpu_num() {
-	prf "${1:0:6}${1:7}"
+	prf "${1:0:$2}${1:$(( $2 + 1 ))}"
+}
+
+check_last() {
+	args="$1"
+	char="$2"
+	if [ "${args:$(( ${#args} - 1 ))}" = "$char" ]; then
+		prf "1"
+	else
+		prf "0"
+	fi
 }
 
 query() {
 	args="$1"
-	if [ "${args:$(( ${#args} - 1 ))}" = ";" ]; then
+	if [ "$(check_last "$args" ";")" -eq "1" ]; then
 		args="${1:0:$(( ${#args} - 1 ))}"
 	fi
 	# check if this actually works
 	if [ "${#args}" -gt "4" ]; then
-		args="$(remove_gpu_num "$args")"
+		args="$(remove_gpu_num "$args" 6)"
 	fi
 	if [ "$shortened" -eq "0" ]; then
 		case $args in
@@ -102,10 +110,29 @@ query() {
 	fi
 }
 
+assign() {
+	args="$1"
+	if [ "$(check_last "$args" ";")" -eq "1" ]; then
+		args="${1:0:$(( ${#args} - 1 ))}"
+	fi
+	args="$(remove_gpu_num "$args" 5)"
+#	args="${args:0:-3}"
+	case $args in
+		"[fan:]/GPUTargetFanSpeed=") prf "$a_speed_output";;
+		"[gpu:]/GPUFanControlState=") prf "$a_control_output";;
+		*) prf "invalid argument";;
+	esac
+}
+
+if [ "$1" = "$cmd_name" ]; then
+	# if $2 is empty, prf "you spawned the gui"
+	shift
+fi
+
 while getopts ":v :q: :a: :t" opt; do
 	case $opt in
 		v) prf "$v_output";;
-		a) to_exec+="";;
+		a) to_exec+="assign $OPTARG;";;
 		q) to_exec+="query $OPTARG;";;
 		t) shortened="1";;
 		\?) prf "Invalid or unsupported option: -$OPTARG";;
