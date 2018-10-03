@@ -103,7 +103,7 @@ query() {
 			"fans") prf "$q_fans_output";;
 			"gpus") prf "$q_gpus_output";;
 			"=[gpu:]/GPUCoreTemp") prf "non-shortened";;
-			*) prf "invalid argument";;
+			*) prf "invalid argument (query)";;
 		esac
 	else
 		prf "$current_temp"
@@ -116,11 +116,11 @@ assign() {
 		args="${1:0:$(( ${#args} - 1 ))}"
 	fi
 	args="$(remove_gpu_num "$args" 5)"
-#	args="${args:0:-3}"
+	args="${args%=*}"
 	case $args in
-		"[fan:]/GPUTargetFanSpeed=") prf "$a_speed_output";;
-		"[gpu:]/GPUFanControlState=") prf "$a_control_output";;
-		*) prf "invalid argument";;
+		"[fan:]/GPUTargetFanSpeed") prf "$a_speed_output";;
+		"[gpu:]/GPUFanControlState") prf "$a_control_output";;
+		*) prf "invalid argument (assign)";;
 	esac
 }
 
