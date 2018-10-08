@@ -5,62 +5,31 @@ prf() { printf %s\\n "$*" ; }
 # obviously make this an array later
 gpu="GeForce GTX 1070"
 
+location=/home/scott/Projects/nssim/
+
 # command-ify these
 time="Sun Aug 12 20:40:20 CEST 2018"
-current_temp="30"
+current_temp="$(cat "$location"/t.txt)"
 
 pc_name="$(uname -n)"
 cmd_name="nvidia-settings"
-fan_speed="35"
 selected_gpu="0"
 selected_fan="0"
 q_get_temp="=[gpu:0]/GPUCoreTemp" #-t
 shortened="0"
 to_exec=""
 
-v_output="
-nvidia-settings:  version 396.51  (builduser@svenstaro)  $time
-  The NVIDIA X Server Settings tool.
-
-  This program is used to configure the NVIDIA Linux graphics driver.
-  For more detail, please see the nvidia-settings(1) man page.
+a_control_output() {
+	prf "
+  Attribute 'GPUFanControlState' ($pc_name:0[gpu:$selected_gpu]) assigned value $1.
 "
-q_output="nvidia-settings: option "-q" requires an argument.
+}
 
-ERROR: Invalid commandline, please run \`nvidia-settings --help\` for usage information.
+a_speed_output() {
+	prf "
+  Attribute 'GPUTargetFanSpeed' ($pc_name:0[fan:$selected_fan]) assigned value $1.
 "
-q_gpus_output="
-1 GPU on $pc_name:0
-
-    [0] $pc_name:0[gpu:$selected_gpu] ($gpu)
-
-      Has the following names:
-        GPU-$selected_gpu
-        GPU-bbf55a41-a4e9-f70d-3251-84b911e14279
-"
-q_fans_output="
-1 Fan on $pc_name:0
-
-    [0] $pc_name:0[fan:$selected_fan] (Fan 0)
-
-      Has the following name:
-        FAN-$selected_fan
-"
-a_control_output="
-  Attribute 'GPUFanControlState' ($pc_name:0[gpu:$selected_gpu]) assigned value 1.
-"
-a_control_err_output="
-    'GPUFanControlState' is a boolean attribute; valid values are: 1 (on/true) and 0 (off/false).
-    'GPUFanControlState' can use the following target types: GPU.
-"
-a_speed_output="
-  Attribute 'GPUTargetFanSpeed' ($pc_name:0[fan:$selected_fan]) assigned value $fan_speed.
-"
-a_speed_err_output="
-
-ERROR: Error assigning value $fan_speed to attribute 'GPUTargetFanSpeed' ($pc_name:0[fan:$selected_fan]) as specified in assignment '[fan:$selected_fan]/GPUTargetFanSpeed=$fan_speed' (Unknown Error).
-
-"
+}
 
 compare_arg_expected() {
 	arg="$1"
@@ -116,10 +85,11 @@ assign() {
 		args="${1:0:$(( ${#args} - 1 ))}"
 	fi
 	args="$(remove_gpu_num "$args" 5)"
+	in_arg="${args#*=}"
 	args="${args%=*}"
 	case $args in
-		"[fan:]/GPUTargetFanSpeed") prf "$a_speed_output";;
-		"[gpu:]/GPUFanControlState") prf "$a_control_output";;
+		"[fan:]/GPUTargetFanSpeed") a_speed_output "$in_arg";;
+		"[gpu:]/GPUFanControlState") a_control_output "$in_arg";;
 		*) prf "invalid argument (assign)";;
 	esac
 }
@@ -138,5 +108,43 @@ while getopts ":v :q: :a: :t" opt; do
 		\?) prf "Invalid or unsupported option: -$OPTARG";;
 	esac
 done
+
+v_output="
+nvidia-settings:  version 396.51  (builduser@svenstaro)  $time
+  The NVIDIA X Server Settings tool.
+
+  This program is used to configure the NVIDIA Linux graphics driver.
+  For more detail, please see the nvidia-settings(1) man page.
+"
+q_output="nvidia-settings: option "-q" requires an argument.
+
+ERROR: Invalid commandline, please run \`nvidia-settings --help\` for usage information.
+"
+q_gpus_output="
+1 GPU on $pc_name:0
+
+    [0] $pc_name:0[gpu:$selected_gpu] ($gpu)
+
+      Has the following names:
+        GPU-$selected_gpu
+        GPU-bbf55a41-a4e9-f70d-3251-84b911e14279
+"
+q_fans_output="
+1 Fan on $pc_name:0
+
+    [0] $pc_name:0[fan:$selected_fan] (Fan 0)
+
+      Has the following name:
+        FAN-$selected_fan
+"
+a_control_err_output="
+    'GPUFanControlState' is a boolean attribute; valid values are: 1 (on/true) and 0 (off/false).
+    'GPUFanControlState' can use the following target types: GPU.
+"
+a_speed_err_output="
+
+ERROR: Error assigning value $fan_speed to attribute 'GPUTargetFanSpeed' ($pc_name:0[fan:$selected_fan]) as specified in assignment '[fan:$selected_fan]/GPUTargetFanSpeed=$fan_speed' (Unknown Error).
+
+"
 
 $to_exec
